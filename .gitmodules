@@ -1,0 +1,12 @@
+[submodule "lib/ellapsedMillis"]
+	path = lib/ellapsedMillis
+	url = git@github.com:cyberang3l/elapsedMillis.git
+[submodule "lib/NewLiquidCrystal"]
+	path = lib/NewLiquidCrystal
+	url = git@github.com:cyberang3l/NewLiquidCrystal.git
+[submodule "lib/NetEEPROM"]
+	path = lib/NetEEPROM
+	url = git@github.com:cyberang3l/NetEEPROM.git
+[submodule "lib/OneWire"]
+	path = lib/OneWire
+	url = git@github.com:cyberang3l/OneWire.git

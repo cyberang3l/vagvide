@@ -26,3 +26,9 @@
 *.exe
 *.out
 *.app
+
+tags
+.clang_complete
+.gcc-flags.json
+.pioenvs/
+.travis.yml
