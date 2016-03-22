@@ -10,3 +10,15 @@
 [submodule "lib/OneWire"]
 	path = lib/OneWire
 	url = git@github.com:cyberang3l/OneWire.git
+[submodule "lib/DallasTemperature"]
+	path = lib/DallasTemperature
+	url = git@github.com:cyberang3l/Arduino-Temperature-Control-Library.git
+[submodule "lib/PID"]
+	path = lib/PID
+	url = git@github.com:cyberang3l/Arduino-PID-Library.git
+[submodule "lib/PID_Autotune"]
+	path = lib/PID_Autotune
+	url = git@github.com:cyberang3l/Arduino-PID-AutoTune-Library.git
+[submodule "lib/ethercard"]
+	path = lib/ethercard
+	url = git@github.com:cyberang3l/ethercard.git
