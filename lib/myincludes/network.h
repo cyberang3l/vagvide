@@ -15,6 +15,33 @@
 #define ETH_SPI_CHIP_SELECT_PIN 53
 #define HOSTNAME_MAX_SIZE 50
 
+/* The following arrays Will be read by NetEEPROM */
+extern byte myip[4];    // Stores the ethernet interface IP address
+extern byte gwip[4];    // Store the IP address of the gateway
+extern byte dnsip[4];   // Store the IP Address of the DNS server
+extern byte netmask[4]; // Stores the netmask of the ethernet interface
+extern byte mymac[6];   // Stores the ethernet interface mac address
+
+/***f* initNetwork
+ *
+ * This function resets the network configuration
+ * to the default IP (192.168.1.200/24)
+ */
+void resetEepromNetworkConfig();
+
+/***f* initNetwork
+ *
+ * Function to be called in the setup for network initialization
+ */
+void initNetwork();
+
+/***f* processEthernetPacket
+ *
+ * Processes an ethernet packet that data starts
+ * at 'pos' in the EthernetBuffer
+ */
+void processEthernetPacket(IN uint16_t payload_pos);
+
 /***f* subnet_mask_valid
  *
  * Returns true if the subnet_mask is valid, false otherwise.
