@@ -98,6 +98,7 @@ void loop() {
    */
   if (!float_switch)
   {
+    setRgbLed(RGB_LED_RED);
     pump_operate(false);
     ssr_operate(0);
   }
