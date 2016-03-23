@@ -27,6 +27,37 @@
 #define LCD_D6_PIN 6
 #define LCD_D7_PIN 7
 
+/* I want to have an operating state for the LCD, but I want it to
+ * be non-blocking because I want to be able to serve the network
+ * at all times.
+ * So as long as we are not in the "OPSTATE_OFF", the SousVide is
+ * running, but displays different things according to the state.
+ * If the user doesn't press a button for 10 seconds, return to the
+ * OPSTATE_MENU_TEMP state.
+ *
+ * In order to setup the temperature, the user can click the
+ * OK button when in the OPSTATE_MENU_TEMP and the menu will transition
+ * in the OPSTATE_MENU_TEMP_SETUP where by using the UP and DOWN buttons the
+ * user can set the desired temperature. The OK button has to be pressed
+ * in order to save the changes, or the BACK to abort. It the user doesn't
+ * press anything for 10 seconds, the operation is aborted.
+ *
+ * The temperature can also be set by choosing a preset f
+ */
+enum operatingState {
+  OPSTATE_OFF_TURN_ON = 0,      // Displays a Press OK to turn ON
+  OPSTATE_OFF_TURN_OFF,         // If Sous Vide is ON, display Press OK to turn Off
+  OPSTATE_MENU_TEMP,            // This opstate displays the current and the desired
+                                // temperatures.
+  OPSTATE_MENU_TEMP_SETUP,      // We can jump in this menu only from OPSTATE_TEMP_MENU_DISPLAY
+  OPSTATE_MENU_PRESET,          // Just displays the menu label: "Presets"
+  OPSTATE_MENU_PRESET_CHOOSE    // With the UP/DOWN buttons navigate through the presets
+                                // and with the OK button select the current preset.
+                                // New presets can be defined only from the web interface.
+
+};
+operatingState opState = OPSTATE_OFF_TURN_ON;
+
 /* PID variables */
 /* Define Variables we'll be connecting to */
 double PID_Output;
@@ -38,6 +69,28 @@ LiquidCrystal_I2C lcd(LCD_I2C_ADDR, LCD_EN_PIN, LCD_RW_PIN,
   LCD_RS_PIN, LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN,
   LCD_D7_PIN, LCD_BACKLIGHT_PIN, POSITIVE);
 
+/*  */
+void off(IN uint8_t buttonsPressed) {
+  switch(opState) {
+    case OPSTATE_OFF_TURN_OFF:
+      /* The Sous Vide is ON and we may want to turn it off */
+      break;
+    case OPSTATE_OFF_TURN_ON:
+    default:
+      /* The Sous Vide is OFF and we may want to turn it off */
+      pump_operate(false);
+      //SousPID.SetMode(MANUAL);
+      ssr_operate(0);
+      lcd.setBacklight(LOW);
+      setRgbLed(RGB_LED_RED);
+      if (buttonsPressed & BTN_OK) {
+        lcd.setBacklight(HIGH);
+        setRgbLed(RGB_LED_GREEN);
+        opState = OPSTATE_MENU_TEMP;
+      }
+  }
+}
+
 /***f* setup
  *
  * Default Arduino setup function
@@ -45,10 +98,10 @@ LiquidCrystal_I2C lcd(LCD_I2C_ADDR, LCD_EN_PIN, LCD_RW_PIN,
 void setup() {
   // define the degree symbol
 
-  pinMode(PUSH_BTN_MENU_BACK, INPUT);
-  pinMode(PUSH_BTN_MENU_OK, INPUT);
-  pinMode(PUSH_BTN_MENU_DOWN, INPUT);
-  pinMode(PUSH_BTN_MENU_UP, INPUT);
+  pinMode(PUSH_BTN_MENU_BACK_PIN, INPUT);
+  pinMode(PUSH_BTN_MENU_OK_PIN, INPUT);
+  pinMode(PUSH_BTN_MENU_DOWN_PIN, INPUT);
+  pinMode(PUSH_BTN_MENU_UP_PIN, INPUT);
   pinMode(SSR_PIN, OUTPUT);
   pinMode(PUMPRELAY_PIN, OUTPUT);
   pump_operate(false);
@@ -66,7 +119,7 @@ void setup() {
   lcd.createChar(0, degree_symbol); // Store in byte 0 in LCD the degree_symbol (available bytes are 0-7)
 
   // Switch on the backlight
-  lcd.setBacklight(HIGH);
+  //lcd.setBacklight(HIGH);
   //lcd.setBacklight(LOW);
   lcd.home (); // go home
 
@@ -80,23 +133,29 @@ void setup() {
 }
 
 void loop() {
-  uint8_t float_switch;
-  float_switch = digitalRead(FLOAT_SWITCH_PIN);
+  uint8_t buttonsPressed = 0;
+  buttonsPressed = readButtons();
 
-  // Serial.print("Button OK: ");
-  // Serial.println(digitalRead(PUSH_BTN_MENU_OK));
-  // Serial.print("Button BACK: ");
-  // Serial.println(digitalRead(PUSH_BTN_MENU_BACK));
-  // Serial.print("Button UP: ");
-  // Serial.println(digitalRead(PUSH_BTN_MENU_UP));
-  // Serial.print("Button DOWN: ");
-  // Serial.println(digitalRead(PUSH_BTN_MENU_DOWN));
-  // delay(500);
+  switch(opState) {
+    case OPSTATE_OFF_TURN_ON:
+    case OPSTATE_OFF_TURN_OFF:
+      off(buttonsPressed);
+      break;
+    case OPSTATE_MENU_PRESET:
+    case OPSTATE_MENU_PRESET_CHOOSE:
+      break;
+    case OPSTATE_MENU_TEMP:
+    case OPSTATE_MENU_TEMP_SETUP:
+    default:
+      break;
+  }
+  //Serial.print("Buttons: ");
+  //Serial.println(readButtons());
 
   /* If the float_switch is out of the water, then turn off
    * the pump and SSR
    */
-  if (!float_switch)
+  if (!(buttonsPressed & BTN_FLOAT_SW))
   {
     setRgbLed(RGB_LED_RED);
     pump_operate(false);
@@ -122,7 +181,7 @@ void loop() {
   /* If the floating switch is on, meaning that the Sous Vide is in the water,
    * only then allow the water pump and the immersion heaters to work.
    */
-  if(float_switch) {
+  if(buttonsPressed & BTN_FLOAT_SW) {
     pump_operate(true);
     readAllTemperatures();
     Serial.print("Average temperature: ");

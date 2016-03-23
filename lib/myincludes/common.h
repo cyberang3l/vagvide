@@ -23,10 +23,18 @@
 #define TEMP_SENSOR_2_PIN 34   // Temperature sensor Front 2
 #define TEMP_SENSOR_3_PIN 36   // Temperature sensor Rear 1
 #define TEMP_SENSOR_4_PIN 38   // Temperature sensor Rear 2
-#define PUSH_BTN_MENU_BACK 40
-#define PUSH_BTN_MENU_OK 42
-#define PUSH_BTN_MENU_DOWN 44
-#define PUSH_BTN_MENU_UP 46
+#define PUSH_BTN_MENU_BACK_PIN 40
+#define PUSH_BTN_MENU_OK_PIN 42
+#define PUSH_BTN_MENU_DOWN_PIN 44
+#define PUSH_BTN_MENU_UP_PIN 46
+
+typedef enum _push_buttons {
+  BTN_BACK     = (1 << 0),
+  BTN_OK       = (1 << 1),
+  BTN_DOWN     = (1 << 2),
+  BTN_UP       = (1 << 3),
+  BTN_FLOAT_SW = (1 << 4)
+} push_buttons;
 
 /* TODO: The degree_symbol only needs to be defined once.
  * No need for extern, because we store the symbol in LCD's
@@ -77,6 +85,13 @@ static void _setRgbLedColor(IN uint8_t R,
  * accordingly.
  */
 void setRgbLed(IN const uint8_t* RGB);
+
+/***f*
+ *
+ * Reads all the input buttons plus the floating switch
+ * that essentially works as a button.
+ */
+uint8_t readButtons();
 
 #endif // endif __cpluscplus
 #endif // endif common_h
