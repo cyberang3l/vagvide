@@ -45,6 +45,7 @@ extern byte degree_symbol[8]; // Variable to store the degree symbol (the little
 extern const uint8_t RGB_LED_GREEN[3];
 extern const uint8_t RGB_LED_RED[3];
 extern const uint8_t RGB_LED_ORANGE[3];
+extern const uint8_t RGB_LED_OFF[3];
 
 /***f* software_Reset
  *

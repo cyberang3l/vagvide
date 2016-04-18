@@ -3,6 +3,7 @@
 const uint8_t RGB_LED_RED[3] = {160, 0, 0};
 const uint8_t RGB_LED_GREEN[3] = {0, 160, 0};
 const uint8_t RGB_LED_ORANGE[3] = {200, 135, 0};
+const uint8_t RGB_LED_OFF[3] = {0, 0, 0};
 
 /* The order of the button pins must be matching
  * the order of the push_buttons enum

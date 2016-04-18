@@ -22,18 +22,26 @@ extern byte dnsip[4];   // Store the IP Address of the DNS server
 extern byte netmask[4]; // Stores the netmask of the ethernet interface
 extern byte mymac[6];   // Stores the ethernet interface mac address
 
-/***f* initNetwork
+/***f* resetEepromNetworkConfig
  *
  * This function resets the network configuration
  * to the default IP (192.168.1.200/24)
  */
 void resetEepromNetworkConfig();
 
-/***f* initNetwork
+/***f* initNetworkModule
  *
- * Function to be called in the setup for network initialization
+ * Function to be called for initializing the network module
  */
-void initNetwork();
+void initNetworkModule();
+
+/***f* initNetworkModule
+ *
+ * Function to be called for initializing the network addresses
+ * This function has to be called after the initNetworkModule has
+ * been called.
+ */
+void initNetworkAddr();
 
 /***f* processEthernetPacket
  *
@@ -68,6 +76,11 @@ void get_hostname_from_http_request(IN char data[],
                                     OUT char hostname[],
                                     IN int hostname_size);
 
+/***f* eth_link_state_up
+ *
+ * Returns the link state of the ENC28J60 module
+ */
+bool eth_link_state_up();
 
 /***f* get_TCP_seq
  *

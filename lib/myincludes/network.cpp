@@ -20,7 +20,7 @@ void resetEepromNetworkConfig() {
   EEPROM.write(NET_EEPROM_OFFSET, 0);
 }
 
-void initNetwork() {
+void initNetworkModule() {
   NetEeprom.init(mymac);
 
   Serial.print("MAC: ");
@@ -29,10 +29,19 @@ void initNetwork() {
 
   while (ether.begin(sizeof Ethernet::buffer, mymac, ETH_SPI_CHIP_SELECT_PIN) == 0)
   {
+    /* TODO: If the EN28J60 module is not powered up, the begin() function will never
+     *       return because the initialize() function in the file enc28j60.cpp that
+     *       is called by the begin function is running in an etternal while loop
+     *       until it gets a response from the hardware. We should have a way to
+     *       notify the user in the LCD that there is a problem with the Ethernet in
+     *       case the ether.begin takes a very long time.
+     */
     Serial.println( "Failed to access Ethernet controller");
     delay(5000);
   }
+}
 
+void initNetworkAddr() {
   if (NetEeprom.isDhcp())
   {
     Serial.println("Try DHCP");
@@ -464,6 +473,10 @@ void get_hostname_from_http_request(IN char data[],
       }
     }
   }
+}
+
+bool eth_link_state_up() {
+  return ether.isLinkUp();
 }
 
 unsigned int get_TCP_seq(IN byte *ethBuf) {
