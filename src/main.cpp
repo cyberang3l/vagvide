@@ -11,24 +11,8 @@
 #include <PID_v1.h>
 #include <PID_AutoTune_v0.h>
 
-/* Includes for the LCD */
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-
 #define TIME_BETWEEN_MEASUREMENTS 1000 // In milliseconds
 
-#define LCD_I2C_ADDR 0x27
-#define LCD_BACKLIGHT_PIN 3
-#define LCD_RS_PIN 0
-#define LCD_RW_PIN 1
-#define LCD_EN_PIN 2
-#define LCD_D4_PIN 4
-#define LCD_D5_PIN 5
-#define LCD_D6_PIN 6
-#define LCD_D7_PIN 7
-
-#define LCD_ON HIGH
-#define LCD_OFF LOW
 /* I want to have an operating state for the LCD, but I want it to
  * be non-blocking because I want to be able to serve the network
  * at all times.
@@ -70,7 +54,19 @@ operatingState opState = OPSTATE_OFF_TURN_ON;
  * and show the temperature, as well as know when we have to turn off the lcd
  * backlight.
  */
-unsigned long lastTimeButtonWasPressed;
+unsigned long lastTimeButtonWasPressed = millis();
+
+/* The variable lastTimeExecutedOpStateFunc is updated with the time in millis
+ * since the last time an opState function was executed. We do not want to
+ * to execute these functions more than 10 times a second (every 100ms) because
+ *  1) We have a delay for button reading (otherwise with one button press we
+ *     will be recording multiple button presses)
+ *  2) The LCD takes some time to clear and get rewritten.
+ *
+ * We use this variable instead of having delays, because we do not want to block
+ * the microntroller since it is service the ethernet and other things.
+ */
+unsigned long lastTimeExecutedOpStateFunc = millis();
 
 /* TODO: Allow the user to configure the LCD backlight timeout from the web
  *       interface. A value of -1 means that the backlight should be permanently
@@ -84,19 +80,31 @@ unsigned long lastTimeButtonWasPressed;
  * a menu without any user action (without the user pressing a button). After this
  * timeout, we return to the OPSTATE_MENU_TEMP
  */
-int32_t lcdBacklightTimeOut = 30000; /* in milliseconds */
+int32_t lcdBacklightTimeOut = 20000; /* in milliseconds */
 uint16_t menuReturnTimeOut = 30000;  /* In milliseconds */
-
-/* lcdBacklightIsOn must be in sync with the current status of the backlight.
- * When the backlight is off and we press any button, we just turn on the backlight
- * and do not perform any operation (we just show the current temperature to the
- * user, for example). The user can operate the menu with buttons only when the
- * backlight is on.
- */
-bool lcdBacklightIsOn = false;
 
 /* Use the variable netInitialized to know when the network has been initialized */
 bool netInitialized = false;
+
+/* Sometimes I may need to print larger messages that cannot fit in one go
+ * in a 2x16 LCD. In this case I want to be able to alternate through the
+ * messages every 2000ms and the variable "lastTimeAlternatedMessage" keeps
+ * a log of when the last alternation happened. This variable is getting checked
+ * by the function increaseMessageAlternationIndexes.
+ */
+unsigned long lastTimeAlternatedMessage = millis();
+
+/* If we want to alternate messages, we need an alternation index for each series
+ * of messages that we want to alter. Then with a mod operation, we can display
+ * different messages in order. This index is for the messages:
+ * LCD_STR_PUT_DEVICE_IN_WATER and LCD_STR_OR_TURN_OFF.
+ * Add all the alternation indexes in the function increaseMessageAlternationIndexes
+ */
+uint8_t deviceInWaterOrTurnOffAlternationIndex = 0;
+
+char *LCD_STR_PRESS_OK_TO_START[LCD_ROWS] = {"Press the \"OK\"", "button to start"};
+char *LCD_STR_PUT_DEVICE_IN_WATER[LCD_ROWS] = {"Please put", "device in water"};
+char *LCD_STR_OR_TURN_OFF[LCD_ROWS] = {"Or press \"OK\"", "to turn off"};
 
 /* PID variables */
 /* TODO: Make the PID variables "variable" and read them from EEPROM */
@@ -116,21 +124,18 @@ LiquidCrystal_I2C lcd(LCD_I2C_ADDR, LCD_EN_PIN, LCD_RW_PIN,
 /********************************** MAIN FUNCTIONS **********************************/
 /************************************************************************************/
 
-/***f* setLcdBacklight
+/***f* increaseMessageAlternationIndexes
  *
- * Use this function to change the status of the backlight.
- * Do not change it directly from the lcd object because this function
- * takes care of the lcdBacklightIsOn variable as well.
+ * Function to increase all the alternation indexes
+ * every 2 seconds (change the 2000ms in the if statement
+ * if you want larger alternation interval)
  */
- void setLcdBacklight(uint8_t backlight_on) {
-   if (backlight_on) {
-     lcd.setBacklight(HIGH);
-     lcdBacklightIsOn = true;
-   } else {
-     lcd.setBacklight(LOW);
-     lcdBacklightIsOn = false;
-   }
- }
+void increaseMessageAlternationIndexes() {
+  if (millis() - lastTimeAlternatedMessage > 2000) {
+    deviceInWaterOrTurnOffAlternationIndex++;
+    lastTimeAlternatedMessage = millis();
+  }
+}
 
 /***f* on
  *
@@ -140,7 +145,22 @@ LiquidCrystal_I2C lcd(LCD_I2C_ADDR, LCD_EN_PIN, LCD_RW_PIN,
  */
 void on(IN uint8_t buttonsPressed) {
   if (opState == OPSTATE_OFF_TURN_ON) {
-
+    /* Turn on the device only if it is in the water */
+    if (deviceIsInWater(buttonsPressed)) {
+      printLcdLine(LCD_STR_PRESS_OK_TO_START);
+      /* Once the device is in the water, turn it on only if the
+       * user has pressed the OK button. */
+      if (buttonsPressed & BTN_OK) {
+        /* Do things to turn the device on */
+        /* TODO: Read the stored desired temperature
+         *       and set the opState to OPSTATE_MENU_TEMP
+         */
+        opState = OPSTATE_MENU_TEMP;
+      }
+    } else {
+      /* Else print in the LCD the message "put device in water" */
+      printLcdLine(LCD_STR_PUT_DEVICE_IN_WATER);
+    }
   }
 }
 
@@ -151,7 +171,6 @@ void on(IN uint8_t buttonsPressed) {
  * in the state OPSTATE_ON_TURN_OFF
  */
 void off(IN uint8_t buttonsPressed) {
-  /* The Sous Vide is ON and we may want to turn it off */
   if (opState == OPSTATE_ON_TURN_OFF) {
     if (buttonsPressed & BTN_OK) {
       pump_operate(false);
@@ -160,6 +179,42 @@ void off(IN uint8_t buttonsPressed) {
       setLcdBacklight(LCD_OFF);
       setRgbLed(RGB_LED_OFF);
     }
+  }
+}
+
+/***f* preset
+ *
+ * We run this function only in the opstates
+ * OPSTATE_MENU_PRESET and OPSTATE_MENU_PRESET_CHOOSE
+ */
+void preset(IN uint8_t buttonsPressed) {
+  if (opState == OPSTATE_MENU_PRESET) {
+    /* TODO */
+  } else if (opState == OPSTATE_MENU_PRESET_CHOOSE) {
+    /* TODO */
+  }
+}
+
+/***f* tempMenu
+ *
+ * We run this function only in the opstates
+ * OPSTATE_MENU_TEMP and OPSTATE_MENU_TEMP_SETUP
+ */
+unsigned long lastSincePrintTemp = millis();
+void tempMenu(IN uint8_t buttonsPressed) {
+  if (opState == OPSTATE_MENU_TEMP) {
+    /* When I print the Celcius sign very fast, I see some flickering in the LCD
+     * That's why I use this timer to not print the temperature so often. At
+     * least not until I find a better solution */
+    if (millis() - lastSincePrintTemp > 1000) {
+      char *str[LCD_ROWS] = {"Xinoula Sola PSI!", "Vangelis C"};
+      printLcdLine(str);
+      lcd.setCursor(10, 1);
+      lcd.write(byte(0));
+      lastSincePrintTemp = millis();
+    }
+  } else if (opState == OPSTATE_MENU_TEMP_SETUP) {
+    /* TODO */
   }
 }
 
@@ -192,17 +247,11 @@ void setup() {
   SousPID.SetMode(AUTOMATIC);
 
   /* Initialize the LCD */
-  lcd.begin(16, 2); //  <<----- My LCD is 16x2, or 20x4
+  lcd.begin(LCD_COLS, LCD_ROWS); //  <<----- My LCD is 16x2, or 20x4
   lcd.createChar(0, degree_symbol); // Store in byte 0 in LCD the degree_symbol (available bytes are 0-7)
 
-  lcd.home(); // go home
-
-  lcd.print("Xinoula Sola PSI!!");
-  lcd.setCursor(0, 1);
-  lcd.print("Vangelis");
-  lcd.setCursor(9, 1);
-  lcd.print("C");
-  lcd.write(byte(0));
+  /* Turn on the backlight during initialization */
+  setLcdBacklight(LCD_ON);
 }
 
 /***f* loop
@@ -210,6 +259,9 @@ void setup() {
  * Main Arduino loop function
  */
 void loop() {
+  /* Increase all the LCD message alternation indexes */
+  increaseMessageAlternationIndexes();
+
   /* If the network link is up and the netInitialized == false, we should initialize
    * the network addresses and set the netInitialized to true. If the link is down
    * and the netInitialized == true, we need to set the netInitialized to false again.
@@ -244,9 +296,19 @@ void loop() {
   /* Check the lcdBacklightTimeOut */
   if (buttonsPressed != 0 && buttonsPressed != BTN_FLOAT_SW) {
     /* If a button is pressed, and this button is not only the
-     * floating switch, switch on the backlight. */
+     * floating switch that will be constantly pressed once the
+     * sous vide is in the water, switch on the backlight if off. */
     lastTimeButtonWasPressed = millis();
-    setLcdBacklight(LCD_ON);
+    if (!isLcdBacklightOn()) {
+      Serial.println("Backlight is OFF. Turning on.");
+      setLcdBacklight(LCD_ON);
+      /* Although we haven't executed an opState function at this
+       * point, set the lastTimeExecutedOpStateFunc to the current
+       * time since we do not want to execute anything if the lcd
+       * backlight was off. We just want to show the current menu
+       * to the user. */
+      lastTimeExecutedOpStateFunc = millis();
+    }
   } else {
     /* Switch off the backlight if a button hasn't been pressed for
      * lcdBacklightTimeOut milliseconds. */
@@ -261,36 +323,82 @@ void loop() {
     opState = OPSTATE_MENU_TEMP;
   }
 
-  /* And based on the current state, call the corresponding functions */
-  switch (opState) {
-    case OPSTATE_OFF_TURN_ON:
-      on(buttonsPressed);
-      break;
-    case OPSTATE_ON_TURN_OFF:
-      off(buttonsPressed);
-      break;
-    case OPSTATE_MENU_PRESET:
-    case OPSTATE_MENU_PRESET_CHOOSE:
-      break;
-    case OPSTATE_MENU_TEMP:
-    case OPSTATE_MENU_TEMP_SETUP:
-    default:
-      break;
+  /* If the float_switch is out of the water, then turn off the pump and SSR
+   * no matter what is the curent opState and return from the loop function.
+   * If the device is in the water, just toggle the proper RGB LED color.
+   */
+  if (!deviceIsInWater(buttonsPressed))
+  {
+    /* If the current opState is OPSTATE_OFF_TURN_ON, then
+     * we turn the RGB led off. Otherwise we turn it red.
+     * A red RGB led indicates that the Sous Vide is ON, but
+     * out of water. An Orange RGB led indicates that the immersion
+     * heaters are on for more than 20% of the interval window and
+     * a green RGB led indicates that the immersion heaters are either
+     * not working, or working up to 20% of the interval window.
+     */
+    pump_operate(false);
+    ssr_operate(0);
+    if (opState == OPSTATE_OFF_TURN_ON) {
+      setRgbLed(RGB_LED_OFF);
+      printLcdLine(LCD_STR_PUT_DEVICE_IN_WATER);
+    } else {
+      setRgbLed(RGB_LED_RED);
+      if (deviceInWaterOrTurnOffAlternationIndex % 2 == 0)
+        printLcdLine(LCD_STR_PUT_DEVICE_IN_WATER);
+      else
+        printLcdLine(LCD_STR_OR_TURN_OFF);
+
+      /* If we are in this state we have to look for user action.
+       * If the user presses the OK button, we have to turn the
+       * device off.
+       */
+      if (buttonsPressed & BTN_OK)
+        opState = OPSTATE_OFF_TURN_ON;
+    }
+
+    return;
+  } else {
+    if (opState == OPSTATE_OFF_TURN_ON)
+      setRgbLed(RGB_LED_OFF);
+    else
+      setRgbLed(RGB_LED_GREEN);
+  }
+
+  /* And based on the current state, call the corresponding functions
+   * if at least 100ms has passed since the last time an opState function
+   * was executed.
+   */
+  if (millis() - lastTimeExecutedOpStateFunc > 100) {
+    Serial.println(buttonsPressed);
+    /* Update the lastTimeExecutedOpStateFunc variable since we are just
+     * ready to run an opState function */
+    lastTimeExecutedOpStateFunc = millis();
+
+    /* Execute the corresponding opState function based on the current state
+     */
+    switch (opState) {
+      case OPSTATE_OFF_TURN_ON:
+        on(buttonsPressed);
+        break;
+      case OPSTATE_ON_TURN_OFF:
+        off(buttonsPressed);
+        break;
+      case OPSTATE_MENU_PRESET:
+      case OPSTATE_MENU_PRESET_CHOOSE:
+        preset(buttonsPressed);
+        break;
+      case OPSTATE_MENU_TEMP:
+      case OPSTATE_MENU_TEMP_SETUP:
+      default:
+        tempMenu(buttonsPressed);
+        break;
+    }
   }
 
   return;
   //Serial.print("Buttons: ");
   //Serial.println(readButtons());
-
-  /* If the float_switch is out of the water, then turn off
-   * the pump and SSR
-   */
-  if (!(buttonsPressed & BTN_FLOAT_SW))
-  {
-    setRgbLed(RGB_LED_RED);
-    pump_operate(false);
-    ssr_operate(0);
-  }
 
   desired_temperature = 36.6;
 
@@ -311,7 +419,7 @@ void loop() {
   /* If the floating switch is on, meaning that the Sous Vide is in the water,
    * only then allow the water pump and the immersion heaters to work.
    */
-  if(buttonsPressed & BTN_FLOAT_SW) {
+  if(deviceIsInWater(buttonsPressed)) {
     pump_operate(true);
     readAllTemperatures();
     Serial.print("Average temperature: ");

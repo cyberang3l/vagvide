@@ -5,6 +5,10 @@
 #include "Arduino.h"
 #include "elapsedMillis.h"
 
+/* Includes for the LCD */
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
 #define IN  // Use for marking a function parameter if it is an input
 #define OUT // Use for marking a function parameter if it is an output
 
@@ -28,6 +32,22 @@
 #define PUSH_BTN_MENU_DOWN_PIN 44
 #define PUSH_BTN_MENU_UP_PIN 46
 
+#define LCD_I2C_ADDR 0x27
+#define LCD_BACKLIGHT_PIN 3
+#define LCD_RS_PIN 0
+#define LCD_RW_PIN 1
+#define LCD_EN_PIN 2
+#define LCD_D4_PIN 4
+#define LCD_D5_PIN 5
+#define LCD_D6_PIN 6
+#define LCD_D7_PIN 7
+
+#define LCD_ON HIGH
+#define LCD_OFF LOW
+
+#define LCD_COLS 16 // Change this if your LCD has more columns
+#define LCD_ROWS 2  // Change this if your LCD has more rows
+
 typedef enum _push_buttons {
   BTN_BACK     = (1 << 0),
   BTN_OK       = (1 << 1),
@@ -46,6 +66,8 @@ extern const uint8_t RGB_LED_GREEN[3];
 extern const uint8_t RGB_LED_RED[3];
 extern const uint8_t RGB_LED_ORANGE[3];
 extern const uint8_t RGB_LED_OFF[3];
+
+extern LiquidCrystal_I2C lcd;
 
 /***f* software_Reset
  *
@@ -93,6 +115,42 @@ void setRgbLed(IN const uint8_t* RGB);
  * that essentially works as a button.
  */
 uint8_t readButtons();
+
+/***f* deviceIsInWater
+ *
+ * Function that returns true if the floating switch is pressed
+ * or false otherwise. This function can be used to determine if the
+ * device is in the water or not.
+ */
+bool deviceIsInWater(IN uint8_t pressedButtons);
+
+/***f* isLcdBacklightOn
+ *
+ * returns the value of the variable lcdBacklightIsOn
+ */
+bool isLcdBacklightOn();
+
+/***f* setLcdBacklight
+ *
+ * Use this function to change the status of the backlight.
+ * Do not change it directly from the lcd object because this function
+ * takes care of the lcdBacklightIsOn variable as well.
+ */
+void setLcdBacklight(IN uint8_t backlight_on);
+
+/***f* printLcdLine
+ *
+ * I do not want to use the lcd.clear() function because it is very
+ * slow, so what I do is to pass the char array that needs to be printed
+ * in this function, the string is printed and filled until the end of
+ * each line with white spaces.
+ *
+ * Whenever you call this function call like like this:
+ *
+ * char *str[LCD_ROWS] = {"Press the \"OK\"", "button to start"};
+ * printLcdLine(str);
+ */
+void printLcdLine(IN char **str);
 
 #endif // endif __cpluscplus
 #endif // endif common_h

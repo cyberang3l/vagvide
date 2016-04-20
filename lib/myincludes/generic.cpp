@@ -5,6 +5,14 @@ const uint8_t RGB_LED_GREEN[3] = {0, 160, 0};
 const uint8_t RGB_LED_ORANGE[3] = {200, 135, 0};
 const uint8_t RGB_LED_OFF[3] = {0, 0, 0};
 
+/* lcdBacklightIsOn must be in sync with the current status of the backlight.
+ * When the backlight is off and we press any button, we just turn on the backlight
+ * and do not perform any operation (we just show the current temperature to the
+ * user, for example). The user can operate the menu with buttons only when the
+ * backlight is on.
+ */
+static bool lcdBacklightIsOn = false;
+
 /* The order of the button pins must be matching
  * the order of the push_buttons enum
  */
@@ -66,4 +74,38 @@ uint8_t readButtons() {
    reply ^= (BTN_FLOAT_SW);
 
    return reply;
+}
+
+bool deviceIsInWater(IN uint8_t pressedButtons) {
+  if (pressedButtons & BTN_FLOAT_SW)
+    return true;
+  else
+    return false;
+}
+
+bool isLcdBacklightOn() {
+  return lcdBacklightIsOn;
+}
+
+void setLcdBacklight(IN uint8_t backlight_on) {
+  if (backlight_on) {
+    lcd.setBacklight(HIGH);
+    lcdBacklightIsOn = true;
+  } else {
+    lcd.setBacklight(LOW);
+    lcdBacklightIsOn = false;
+  }
+}
+
+void printLcdLine(IN char **str) {
+  char whiteSpaceFiller[LCD_COLS];
+  //char *whiteSpaceFiller = (char*)malloc(LCD_COLS * sizeof(char));
+  memset(whiteSpaceFiller, ' ', LCD_COLS * sizeof(char));
+  for (uint8_t r = 0; r < LCD_ROWS; r++) {
+    lcd.setCursor(0, r);
+    lcd.print(str[r]);
+    /* if str[r] length is less than LCD_COLS, the following line will
+     * fill the remaining LCD blocks in line 'r' with whitespaces */
+    lcd.print(whiteSpaceFiller);
+  }
 }
