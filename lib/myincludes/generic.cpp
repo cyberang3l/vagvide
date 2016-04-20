@@ -97,13 +97,15 @@ void setLcdBacklight(IN uint8_t backlight_on) {
   }
 }
 
-void printLcdLine(IN char **str) {
+void printLcdLine(IN const char * const str[LCD_ROWS]) {
+  char line_buffer[LCD_COLS_CHAR_LIMIT];
   char whiteSpaceFiller[LCD_COLS];
-  //char *whiteSpaceFiller = (char*)malloc(LCD_COLS * sizeof(char));
   memset(whiteSpaceFiller, ' ', LCD_COLS * sizeof(char));
+
   for (uint8_t r = 0; r < LCD_ROWS; r++) {
     lcd.setCursor(0, r);
-    lcd.print(str[r]);
+    strcpy_P(line_buffer, (char *)pgm_read_word(&(str[r])));
+    lcd.print(line_buffer);
     /* if str[r] length is less than LCD_COLS, the following line will
      * fill the remaining LCD blocks in line 'r' with whitespaces */
     lcd.print(whiteSpaceFiller);

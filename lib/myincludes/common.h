@@ -47,6 +47,8 @@
 
 #define LCD_COLS 16 // Change this if your LCD has more columns
 #define LCD_ROWS 2  // Change this if your LCD has more rows
+#define LCD_COLS_CHAR_LIMIT (LCD_COLS + 1)  // The LCD can print X chars, but a predefined string
+                                            //in C has X+1 char because of the termination character
 
 typedef enum _push_buttons {
   BTN_BACK     = (1 << 0),
@@ -150,7 +152,7 @@ void setLcdBacklight(IN uint8_t backlight_on);
  * char *str[LCD_ROWS] = {"Press the \"OK\"", "button to start"};
  * printLcdLine(str);
  */
-void printLcdLine(IN char **str);
+void printLcdLine(IN const char * const str[LCD_ROWS]);
 
 #endif // endif __cpluscplus
 #endif // endif common_h
