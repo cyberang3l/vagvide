@@ -97,12 +97,17 @@ void setLcdBacklight(IN uint8_t backlight_on) {
   }
 }
 
-void printLcdLine(IN const char * const str[LCD_ROWS]) {
+void printLcdLine(IN const char * const str[LCD_ROWS],
+                  IN uint8_t printLineNo) {
   char line_buffer[LCD_COLS_CHAR_LIMIT];
   char whiteSpaceFiller[LCD_COLS];
   memset(whiteSpaceFiller, ' ', LCD_COLS * sizeof(char));
 
-  for (uint8_t r = 0; r < LCD_ROWS; r++) {
+  uint8_t startRow = 0, endRow = LCD_ROWS - 1;
+  if (printLineNo != 0)
+    startRow = endRow = printLineNo - 1;
+
+  for (uint8_t r = startRow; r <= endRow; r++) {
     lcd.setCursor(0, r);
     strcpy_P(line_buffer, (char *)pgm_read_word(&(str[r])));
     lcd.print(line_buffer);

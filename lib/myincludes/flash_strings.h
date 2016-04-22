@@ -4,59 +4,46 @@
 /* Read the following link to understand why we define the PROGMEM variables the way we do
  * http://www.atmel.com/webdoc/AVRLibcReferenceManual/pgmspace_1pgmspace_strings.html */
 
-const char str1[] PROGMEM = "Press OK";
-const char str2[] PROGMEM = "to start";
+const char str0_1[] PROGMEM = "Press OK";
+const char str0_2[] PROGMEM = "to start";
 
-const char * const LCD_STR_PRESS_OK_TO_START[LCD_ROWS] PROGMEM = {str1, str2};
+const char * const LCD_STR_PRESS_OK_TO_START[LCD_ROWS] PROGMEM = {str0_1, str0_2};
 
-const char str3[] PROGMEM = "Please put";
-const char str4[] PROGMEM = "device in water";
-const char str5[] PROGMEM = "or press OK";
-const char str6[] PROGMEM = "to turn off";
+const char str1_1[] PROGMEM = "Please put";
+const char str1_2[] PROGMEM = "device in water";
+const char str2_1[] PROGMEM = "or press OK";
+const char str2_2[] PROGMEM = "to turn off";
 
 const char * const LCD_STR_PUT_DEVICE_IN_WATER[2][LCD_ROWS] PROGMEM = {
-  {str3, str4},
-  {str5, str6}
+  {str1_1, str1_2},
+  {str2_1, str2_2}
 };
 
-const char str7[] PROGMEM = "Current Temp";
-const char str8[] PROGMEM = "Target Temp";
-const char str9[] PROGMEM = "C             ";
+const char str3[] PROGMEM = "Current Temp";
+const char str4[] PROGMEM = "Target Temp";
+const char str5[] PROGMEM = "C             ";
 
 const char * const LCD_DISPLAY_TEMPERATURE[2][LCD_ROWS] PROGMEM = {
-  {str7, str9},
-  {str8, str9}
+  {str3, str5},
+  {str4, str5}
 };
 
-const char str10[] PROGMEM = "Turn off";
-const char str11[] PROGMEM = "device";
-const char str12[] PROGMEM = "Setup target";
-const char str13[] PROGMEM = "temperature";
-const char str14[] PROGMEM = "Choose cooking";
-const char str15[] PROGMEM = "preset";
-const char str16[] PROGMEM = "Show network";
-const char str17[] PROGMEM = "settings";
+const char str4_1[] PROGMEM = "Set target temp";
+
+const char * const LCD_STR_SET_TARGET_TEMP[LCD_ROWS] PROGMEM = {str4_1, str5};
+
+const char str6_1[] PROGMEM = "Turn off";
+const char str6_2[] PROGMEM = "device";
+const char str7_1[] PROGMEM = "Setup target";
+const char str7_2[] PROGMEM = "temperature";
+const char str8_1[] PROGMEM = "Choose cooking";
+const char str8_2[] PROGMEM = "preset";
+const char str9_1[] PROGMEM = "Show network";
+const char str9_2[] PROGMEM = "settings";
 
 const char * const LCD_TOP_LEVEL_MENU_LABELS[4][LCD_ROWS] PROGMEM = {
-  {str10, str11},
-  {str12, str13},
-  {str14, str15},
-  {str16, str17}
+  {str6_1, str6_2},
+  {str7_1, str7_2},
+  {str8_1, str8_2},
+  {str9_1, str9_2}
 };
-
-
-// const char LCD_STR_PRESS_OK_TO_START[LCD_ROWS][LCD_COLS] PROGMEM = {"Press the \"OK\"", "button to start"};
-// const char *LCD_STR_PUT_DEVICE_IN_WATER[LCD_ROWS] = {"Please put", "device in water"};
-// const char *LCD_STR_PUT_DEVICE_IN_WATER_2[LCD_ROWS] = {"Or press \"OK\"", "to turn off"};
-//
-// const char *LCD_DISPLAY_TEMPERATURE[2][LCD_ROWS] = {
-//   {"Current Temp", "C               "},
-//   {"Target Temp", "C               "}
-// };
-//
-// const char *LCD_TOP_LEVEL_MENU_LABELS[4][LCD_ROWS] = {
-//   {"Turn off", "device"},
-//   {"Setup target", "temperature"},
-//   {"Choose cooking", "preset"},
-//   {"Show network", "settings"}
-// };

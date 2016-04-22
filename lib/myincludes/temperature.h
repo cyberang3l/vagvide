@@ -7,6 +7,9 @@
 #include "OneWire.h"
 #include "DallasTemperature.h"
 
+#define MIN_TEMPERATURE 10
+#define MAX_TEMPERATURE 85
+
 #define TEMP_RESOLUTION_BITS 11 // 9, 10, 11 or 12 bits resolution with
 // 93.75ms, 187.5ms, 375ms and 750ms temperature
 // reading time respectively.

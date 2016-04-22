@@ -147,12 +147,17 @@ void setLcdBacklight(IN uint8_t backlight_on);
  * in this function, the string is printed and filled until the end of
  * each line with white spaces.
  *
+ * If we want to print only one line of the string, then choose the line
+ * with the printLineNo parameter. The first line is 1, 2nd line is 2 and
+ * so on. When printLineNo == 0, all lines in the str array will be printed
+ *
  * Whenever you call this function call like like this:
  *
  * char *str[LCD_ROWS] = {"Press the \"OK\"", "button to start"};
  * printLcdLine(str);
  */
-void printLcdLine(IN const char * const str[LCD_ROWS]);
+void printLcdLine(IN const char * const str[LCD_ROWS],
+                  IN uint8_t printLineNo = 0);
 
 #endif // endif __cpluscplus
 #endif // endif common_h
