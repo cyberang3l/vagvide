@@ -146,8 +146,8 @@ double PID_Output;
 
 /* Duration of up and down buttons being pressed *
  * (150 is the button read interval) */
-byte longKeyPressCountMin = 13;    // 13 * 150 = 1950 ms
-byte mediumKeyPressCountMin = 6;    // 6 * 150 = 900 ms
+byte longKeyPressCountMin = 40;    // 40 * 150 = 6000 ms
+byte mediumKeyPressCountMin = 20;    // 20 * 150 = 3000 ms
 byte upOrDownPressCount = 0; // How many counts of up or down
 
 /* Instantiate the PID */
@@ -267,14 +267,9 @@ float tempStep() {
   float temp_increment = 0.1;
 
   if(upOrDownPressCount >= longKeyPressCountMin)
-  {
     temp_increment = 2;
-  }
-
   else if(upOrDownPressCount >= mediumKeyPressCountMin)
-  {
     temp_increment = 1;
-  }
 
   upOrDownPressCount++;
 
@@ -291,7 +286,7 @@ void tempMenu(IN uint8_t buttonsPressed) {
   if (opState == OPSTATE_MENU_TEMP) {
     printLcdLine(LCD_TOP_LEVEL_MENU_LABELS[1]);
     if (buttonsPressed & BTN_OK) {
-      /* By pressing OK, we turn off the device */
+      /* By pressing OK, we enter the submenu OPSTATE_MENU_TEMP_SETUP */
       opState = OPSTATE_MENU_TEMP_SETUP;
     } else if (buttonsPressed & BTN_DOWN) {
       /* By pressing DOWN, we go to the next top-level menu */
@@ -338,8 +333,8 @@ void tempMenu(IN uint8_t buttonsPressed) {
       else
         temporary_temperature += tempStep();
     } else if (buttonsPressed & BTN_BACK) {
-      /* By pressing BACK, go to the upper menu without
-       * saving the changes to the temperature */
+      /* By pressing BACK, go to the upper menu where we came from
+       * without saving the changes to the temperature */
       temporary_temperature = desired_temperature;
       opState = OPSTATE_MENU_TEMP;
     }
@@ -355,7 +350,7 @@ void preset(IN uint8_t buttonsPressed) {
   if (opState == OPSTATE_MENU_PRESET) {
     printLcdLine(LCD_TOP_LEVEL_MENU_LABELS[2]);
     if (buttonsPressed & BTN_OK) {
-      /* By pressing OK, we turn off the device */
+      /* By pressing OK, we enter the submenu OPSTATE_MENU_PRESET_CHOOSE */
       opState = OPSTATE_MENU_PRESET_CHOOSE;
     } else if (buttonsPressed & BTN_DOWN) {
       /* By pressing DOWN, we go to the next top-level menu */
@@ -383,7 +378,7 @@ void netSettings(IN uint8_t buttonsPressed) {
   if (opState == OPSTATE_MENU_NET_SETTINGS) {
     printLcdLine(LCD_TOP_LEVEL_MENU_LABELS[3]);
     if (buttonsPressed & BTN_OK) {
-      /* By pressing OK, we turn off the device */
+      /* By pressing OK, we enter the submenu OPSTATE_MENU_NET_SETTINGS_SHOW */
       opState = OPSTATE_MENU_NET_SETTINGS_SHOW;
     } else if (buttonsPressed & BTN_DOWN) {
       /* By pressing DOWN, we go to the next top-level menu */
@@ -526,9 +521,7 @@ void loop() {
 
     /* Clear the upOrDownPressCount if neither up or down are pressed */
     if(!(buttonsPressed & BTN_DOWN) && !(buttonsPressed & BTN_UP))
-    {
       upOrDownPressCount = 0;
-    }
 
     /* Check the lcdBacklightTimeOut */
     if (buttonsPressed != 0 && buttonsPressed != BTN_FLOAT_SW) {
