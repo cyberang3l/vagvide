@@ -146,7 +146,7 @@ double PID_Output;
 
 /* Duration of up and down buttons being pressed *
  * (150 is the button read interval) */
-byte longKeyPressCountMax = 13;    // 13 * 150 = 1950 ms
+byte longKeyPressCountMin = 13;    // 13 * 150 = 1950 ms
 byte mediumKeyPressCountMin = 6;    // 6 * 150 = 900 ms
 byte upOrDownPressCount = 0; // How many counts of up or down
 
@@ -266,24 +266,18 @@ void turnOff(IN uint8_t buttonsPressed) {
 float tempStep() {
   float temp_increment = 0.1;
 
-  if( upOrDownPressCount < mediumKeyPressCountMin )
-  {
-    return temp_increment;
-  }
-
-  else if(upOrDownPressCount >= longKeyPressCountMax)
+  if(upOrDownPressCount >= longKeyPressCountMin)
   {
     temp_increment = 2;
-    return temp_increment;
   }
 
-  else
+  else if(upOrDownPressCount >= mediumKeyPressCountMin)
   {
     temp_increment = 1;
-    return temp_increment;
   }
 
   upOrDownPressCount++;
+
   return temp_increment;
 }
 
