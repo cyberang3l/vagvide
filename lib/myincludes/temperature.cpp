@@ -96,3 +96,12 @@ void initTempSensors() {
   #endif
   }
 }
+
+void initDesiredTemperature() {
+  /* TODO: Through the web interface, the user should be able to choose
+   *       if the last settings should be remember across device reboots.
+   *       If yes, then we should be reading the stored desired_temperature
+   *       value from eeprom. Otherwise, we should be setting the minimum
+   *       temperature as the desired_temperature */
+  desired_temperature = MIN_TEMPERATURE;
+}

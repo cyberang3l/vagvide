@@ -138,7 +138,7 @@ uint8_t main_menus_count = sizeof(LCD_TOP_LEVEL_MENU_LABELS) / sizeof(char*) / L
  * temperature with the buttons. Since we need to press OK to accept the
  * new temperature, we cannot use the desired_temperature variable directly.
  */
-float temporary_temperature = 36.6;
+float temporary_temperature;
 
 /* PID variables */
 /* TODO: Make the PID variables "variable" and read them from EEPROM */
@@ -401,14 +401,14 @@ void netSettings(IN uint8_t buttonsPressed) {
  * Displays the temperature in the LCD.
  * We run this function only in the opstate OPSTATE_DISPLAY_TEMP
  */
-void display_temperature() {
+void display_temperature(uint8_t buttonsPressed) {
   if (opState == OPSTATE_DISPLAY_TEMP) {
     uint8_t total_strings_str = sizeof(LCD_DISPLAY_TEMPERATURE) / sizeof(char*) / LCD_ROWS;
     uint8_t current_message_index = getMessageAlternationIndex(total_strings_str);
     /* The current temperature must be first in the next array.
-     * The goal/target temperature must be second */
+     * The goal/target/desired temperature must be second */
     // TODO: Add the correct temperatures from the variables
-    float current_goal_temps[2] = {27.684, 57.450};
+    float current_goal_temps[2] = {27.68, desired_temperature};
 
     if (prevOpState != opState) {
       printLcdLine(LCD_DISPLAY_TEMPERATURE[current_message_index]);
@@ -465,6 +465,10 @@ void setup() {
 
   /* Turn on the backlight during initialization */
   setLcdBacklight(LCD_ON);
+
+  /* Initialize the desired temperature */
+  initDesiredTemperature();
+  temporary_temperature = desired_temperature;
 
   //turn the PID on
   SousPID.SetMode(AUTOMATIC);
@@ -619,6 +623,8 @@ void loop() {
     if (opState != OPSTATE_OFF_TURN_ON)
       setRgbLed(RGB_LED_GREEN);
 
+    Serial.println("Desired temperature: ");
+    Serial.print(desired_temperature);
     /* Execute the corresponding opState function based on the current state.
      *
      * Each of the functions that are called in the following switch statement
@@ -663,7 +669,7 @@ void loop() {
         prevOpState = OPSTATE_MENU_NET_SETTINGS_SHOW;
         break;
       case OPSTATE_DISPLAY_TEMP:
-        display_temperature();
+        display_temperature(buttonsPressed);
         prevOpState = OPSTATE_DISPLAY_TEMP;
         break;
       default:
@@ -673,8 +679,6 @@ void loop() {
   }
 
   return;
-
-  desired_temperature = 36.6;
 
   /* If the elapsed time since the last measurement is greater than
    * TIME_BETWEEN_MEASUREMENTS, send a new requestTemperature to all

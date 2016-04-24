@@ -27,8 +27,8 @@ extern DallasTemperature temp_sensor[]; // Array to store the DallasTemperature 
 
 extern elapsedMillis timeElapsedSinceLastMeasurement;
 
-extern double desired_temperature;
-extern double current_temperature;
+extern double desired_temperature; // These are double instead of float, because the PID module
+extern double current_temperature; // accepts double values in the PID constructor.
 
 /***f* printTemperature
  *
@@ -56,6 +56,13 @@ void readAllTemperatures();
  * Call in the setup() function.
  */
 void initTempSensors();
+
+/***f* initDesiredTemperature
+ *
+ * Initialize the desired_temperature variable
+ * Using either a value from EEPROM or a default value.
+ */
+void initDesiredTemperature();
 
 #endif // endif __cpluscplus
 #endif // endif temperature_h
