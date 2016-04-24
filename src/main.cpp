@@ -144,6 +144,12 @@ float temporary_temperature = 36.6;
 /* TODO: Make the PID variables "variable" and read them from EEPROM */
 double PID_Output;
 
+/* Duration of up and down buttons being pressed *
+ * (150 is the button read interval) */
+byte longKeyPressCountMax = 13;    // 13 * 150 = 1950 ms
+byte mediumKeyPressCountMin = 6;    // 6 * 150 = 900 ms
+byte upOrDownPressCount = 0; // How many counts of up or down
+
 /* Instantiate the PID */
 /* Specify the links and initial tuning parameters */
 PID SousPID(&current_temperature, &PID_Output, &desired_temperature, 850, 0.5, 0.1, DIRECT);
@@ -252,12 +258,42 @@ void turnOff(IN uint8_t buttonsPressed) {
   }
 }
 
+/***f* tempStep
+ *
+ * Returns the appropriate
+ * temperature jump step
+ */
+float tempStep() {
+  float temp_increment = 0.1;
+
+  if( upOrDownPressCount < mediumKeyPressCountMin )
+  {
+    return temp_increment;
+  }
+
+  else if(upOrDownPressCount >= longKeyPressCountMax)
+  {
+    temp_increment = 2;
+    return temp_increment;
+  }
+
+  else
+  {
+    temp_increment = 1;
+    return temp_increment;
+  }
+
+  upOrDownPressCount++;
+  return temp_increment;
+}
+
 /***f* tempMenu
  *
  * We run this function only in the opstates
  * OPSTATE_MENU_TEMP and OPSTATE_MENU_TEMP_SETUP
  */
 void tempMenu(IN uint8_t buttonsPressed) {
+
   if (opState == OPSTATE_MENU_TEMP) {
     printLcdLine(LCD_TOP_LEVEL_MENU_LABELS[1]);
     if (buttonsPressed & BTN_OK) {
@@ -285,12 +321,6 @@ void tempMenu(IN uint8_t buttonsPressed) {
     lcd.setCursor(2, 1);
     lcd.print(temporary_temperature);
 
-    float temp_increment = 0.1;
-    /* TODO: Add code to determine if there is a long press,
-     *       in any of the up/down buttons, change the temp_increment
-     *       otherwise it will be very annoying to go from 30 to 60 degrees
-     *       with the default 0.1 degrees step.
-     */
     if (buttonsPressed & BTN_OK) {
       /* TODO
        * By pressing OK, Save the desired temperature for the runtime,
@@ -303,16 +333,16 @@ void tempMenu(IN uint8_t buttonsPressed) {
       opState = OPSTATE_MENU_TEMP;
     } else if (buttonsPressed & BTN_DOWN) {
       /* Decrease the temperature but respect the limits */
-      if (temporary_temperature - temp_increment < MIN_TEMPERATURE)
+      if (temporary_temperature - tempStep() < MIN_TEMPERATURE)
         temporary_temperature = MIN_TEMPERATURE;
       else
-        temporary_temperature -= temp_increment;
+        temporary_temperature -= tempStep();
     } else if (buttonsPressed & BTN_UP) {
       /* Increase the temperature but respect the limits */
-      if (temporary_temperature + temp_increment > MAX_TEMPERATURE)
+      if (temporary_temperature + tempStep() > MAX_TEMPERATURE)
         temporary_temperature = MAX_TEMPERATURE;
       else
-        temporary_temperature += temp_increment;
+        temporary_temperature += tempStep();
     } else if (buttonsPressed & BTN_BACK) {
       /* By pressing BACK, go to the upper menu without
        * saving the changes to the temperature */
@@ -499,6 +529,12 @@ void loop() {
    */
   if (millis() - lastTimeButtonWasPressed > 150) {
     buttonsPressed = readButtons();
+
+    /* Clear the upOrDownPressCount if neither up or down are pressed */
+    if(!(buttonsPressed & BTN_DOWN) && !(buttonsPressed & BTN_UP))
+    {
+      upOrDownPressCount = 0;
+    }
 
     /* Check the lcdBacklightTimeOut */
     if (buttonsPressed != 0 && buttonsPressed != BTN_FLOAT_SW) {
