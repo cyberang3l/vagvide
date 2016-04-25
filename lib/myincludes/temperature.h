@@ -10,9 +10,10 @@
 #define MIN_TEMPERATURE 10
 #define MAX_TEMPERATURE 85
 
-#define TEMP_RESOLUTION_BITS 11 // 9, 10, 11 or 12 bits resolution with
-// 93.75ms, 187.5ms, 375ms and 750ms temperature
-// reading time respectively.
+#define TEMP_RESOLUTION_BITS 12 // 9, 10, 11 or 12 bits resolution with
+                                // 93.75ms, 187.5ms, 375ms and 750ms temperature
+                                // reading time respectively. Read the DS18B20
+                                // datasheet for more information.
 
 #define TEMPSENSOR_DESC_STR_LENGTH 19 // The length of the strings in the tempSensorDesc array.
 
@@ -39,14 +40,24 @@ void printTemperature(IN float temperature,
                       IN String sensor_name,
                       IN byte pinConnectedTo);
 
+/***f* _requestAllTemperatures
+ *
+ * The function _requestAllTemperatures will just initiate an
+ * asynchronous temperature conversion to all of the temperature sensors.
+ *
+ * Important! Treat the temperature sensors as opaque objects, and handle
+ * them only through the provided functions.
+ */
+void _requestAllTemperatures();
+
 /***f* readAllTemperatures
  *
  * Read the temperatures from all sensors and store them in the
- * temperature array, while making sure that the necessary time
- * for the conversion has elapsed.
+ * temperature array. When the necessary time for the conversion
+ * has elapsed, initiate a new temperature conversion.
  *
  * Moreover, calculate the average from all sensors and store it
- * in the variable avg_temperature.
+ * in the variable avg_temperature and current_temperature.
  */
 void readAllTemperatures();
 

@@ -13,8 +13,6 @@
 #include <PID_v1.h>
 //#include <PID_AutoTune_v0.h>
 
-#define TIME_BETWEEN_MEASUREMENTS 1000 // In milliseconds
-
 /* I want to have an operating state for the LCD, but I want it to
  * be non-blocking because I want to be able to serve the network
  * at all times.
@@ -408,7 +406,7 @@ void display_temperature(uint8_t buttonsPressed) {
     /* The current temperature must be first in the next array.
      * The goal/target/desired temperature must be second */
     // TODO: Add the correct temperatures from the variables
-    float current_goal_temps[2] = {27.68, desired_temperature};
+    float current_goal_temps[2] = {current_temperature, desired_temperature};
 
     if (prevOpState != opState) {
       printLcdLine(LCD_DISPLAY_TEMPERATURE[current_message_index]);
@@ -433,7 +431,6 @@ void display_temperature(uint8_t buttonsPressed) {
   }
 }
 
-
 /***f* setup
  *
  * Default Arduino setup function
@@ -450,8 +447,10 @@ void setup() {
   pinMode(FLOAT_SWITCH_PIN, INPUT);
   ssr_operate(0);
 
-  /* Initialize the temperature sensors */
+  /* Initialize the temperature sensors
+   * and initiate a first temperature reading. */
   initTempSensors();
+  _requestAllTemperatures();
 
   /* Initialize the network but do not configure IP addresses yet
    * We do that in the main loop because we need to react to link
@@ -487,6 +486,13 @@ void loop() {
   }
   /* Increases all the LCD message alternation index */
   increaseMessageAlternationIndex();
+
+  /* Read the latest temperature, and request new temperatures if needed
+   * All of this is handled from the readAllTemperatures() function.
+   * The user just needs to read the avg_temperature, current_temperature
+   * or *temperature array.
+   */
+  readAllTemperatures();
 
   /* If the network link is up and the netInitialized == false, we should initialize
    * the network addresses and set the netInitialized to true. If the link is down
@@ -569,14 +575,7 @@ void loop() {
       /* If the current opState is OPSTATE_OFF_TURN_ON, then
        * we turn the RGB led off. Otherwise we turn it red.
        * A red RGB led indicates that the Sous Vide is ON, but
-       * out of water. An Orange RGB led indicates that the immersion
-       * heaters are on for more than 20% of the interval window and
-       * a green RGB led indicates that the immersion heaters are either
-       * not working, or working up to 20% of the interval window.
-       * TODO: Currently the above description is not working. We
-       *       Only turn the RGB led Green, Red or Off. We don't
-       *       use the orange state
-       */
+       * out of water. */
       pump_operate(false);
       ssr_operate(0);
       if (opState == OPSTATE_OFF_TURN_ON) {
@@ -609,7 +608,9 @@ void loop() {
        * in order to determine if we will refresh all lines in the LCD,
        * So after the device is out of water and back in, we would want
        * to make the prevOpState different than the current opState in order
-       * to force a refresh in the LCD.
+       * to force a refresh in the LCD and since we expect that under normal
+       * operation the opState will never reach an unknown state, an unknown
+       * pervOpState will "always" be different when compared to the opState.
        */
       prevOpState = OPSTATE_UNKNOWN;
 
@@ -617,14 +618,44 @@ void loop() {
     }
 
     /* If we execute code at this point, the device is in the water
-     * And we handle the rest from the different opState functions
+     * so make sure we control the immersion heaters if the device is
+     * not turned off, and handle the rest of the opStates from the
+     * different opState functions in the switch statement below.
      */
 
-    if (opState != OPSTATE_OFF_TURN_ON)
-      setRgbLed(RGB_LED_GREEN);
 
-    Serial.println("Desired temperature: ");
-    Serial.print(desired_temperature);
+    /* Set the correct RGB LED color if the Sous Vide is on
+     * An Orange RGB led indicates that the current temperature is more
+     * than 2 degrees far from the desired temperature. A green RGB LED
+     * indicates that the current temperature is less than 2 degrees from
+     * the desired_temperature. I can add more RGB LED colors here
+     * to indicate different things.
+     */
+    if (opState != OPSTATE_OFF_TURN_ON) {
+      if (abs(desired_temperature - current_temperature) > 2)
+        setRgbLed(RGB_LED_ORANGE);
+      else
+        setRgbLed(RGB_LED_GREEN);
+
+      /* Make sure the pump circulates the water, and
+       * control the Sous Vide with the PID
+       * TODO: Although I have an SSR, the SSR cannot
+       *       operate in such high frequencies as the ones supported
+       *       by default from the Arduino.
+       *
+       *       NOW THIS IS RUNNING ONCE EVERY 150ms WHICH IS VERY SLOW.
+       *       READ AND UNDERSTAND THE TIMER INTERRUPTS, IN ORDER TO ADD
+       *       THE FOLLOWING CODE IN AN INTERRUPT SO THAT IT GETS EXECUTED
+       *       NO MATTER WHAT, e.g. EVERY 10ms.
+       *       http://sculland.com/ATmega168/Interrupts-And-Timers/8-Bit-Timer-Setup/
+       */
+      pump_operate(true);
+      SousPID.Compute();
+      Serial.print(F("PID Output: "));
+      Serial.println(PID_Output);
+      ssr_operate(PID_Output);
+    }
+
     /* Execute the corresponding opState function based on the current state.
      *
      * Each of the functions that are called in the following switch statement
@@ -677,42 +708,4 @@ void loop() {
         break;
     }
   }
-
-  return;
-
-  /* If the elapsed time since the last measurement is greater than
-   * TIME_BETWEEN_MEASUREMENTS, send a new requestTemperature to all
-   * of the sensors. Since we do not wait for conversion in this spot
-   * (in the setup function I disable the waitForConversion) in order
-   * to avoid blocking the program, before we read the actual
-   * temperatures and use them, we have to make sure that the conversion
-   * has finished.
-   */
-  if (timeElapsedSinceLastMeasurement > TIME_BETWEEN_MEASUREMENTS) {
-    for (int i = 0; i < numSensors; i++)
-      temp_sensor[i].requestTemperatures();
-    timeElapsedSinceLastMeasurement = 0;
-  }
-
-  /* If the floating switch is on, meaning that the Sous Vide is in the water,
-   * only then allow the water pump and the immersion heaters to work.
-   */
-  if(deviceIsInWater(buttonsPressed)) {
-    pump_operate(true);
-    readAllTemperatures();
-    Serial.print("Average temperature: ");
-    Serial.println(avg_temperature);
-    current_temperature = avg_temperature;
-    lcd.setCursor(11, 1);
-    lcd.print(current_temperature, DEC);
-    SousPID.Compute();
-    Serial.print("PID Output: ");
-    Serial.println(PID_Output);
-    ssr_operate(PID_Output);
-    // if (PID_Output && (abs(desired_temperature - current_temperature) > 0.))
-    //   pump_operate(true);
-    // else
-    //   pump_operate(false);
-  }
-  //}
 }

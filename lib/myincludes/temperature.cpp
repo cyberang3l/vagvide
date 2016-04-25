@@ -24,53 +24,71 @@ void printTemperature(IN float temperature,
                       IN String sensor_name,
                       IN byte pinConnectedTo) {
 #if DEBUG
-  Serial.print("Temperature for the sensor ");
+  Serial.print(F("Temperature for the sensor "));
   Serial.print(sensor_name);
-  Serial.print(" (Pin ");
+  Serial.print(F(" (Pin "));
   Serial.print(pinConnectedTo);
-  Serial.print(") is ");
+  Serial.print(F(") is "));
   Serial.println(temperature);
 #endif
 }
 
+void _requestAllTemperatures() {
+  for (int i = 0; i < numSensors; i++)
+    temp_sensor[i].requestTemperatures();
+  timeElapsedSinceLastMeasurement = 0;
+}
+
 void readAllTemperatures() {
+  /* If the necessary time for conversion hasn't elapsed yet,
+   * return from this function without updating the temperatures
+   * already stored in the temperature array. */
   switch (TEMP_RESOLUTION_BITS){
     case 9:
       if (timeElapsedSinceLastMeasurement < 94)
-        delay(94 - timeElapsedSinceLastMeasurement);
+        return;
       break;
     case 10:
       if (timeElapsedSinceLastMeasurement < 188)
-        delay(188 - timeElapsedSinceLastMeasurement);
+        return;
       break;
     case 11:
       if (timeElapsedSinceLastMeasurement < 375)
-        delay(375 - timeElapsedSinceLastMeasurement);
+        return;
       break;
     default:
-      Serial.println("Unknown resolution...");
+      Serial.println(F("Unknown resolution..."));
     case 12:
       if (timeElapsedSinceLastMeasurement < 750)
-        delay(750 - timeElapsedSinceLastMeasurement);
+        return;
       break;
-    }
-  //Serial.println("Requesting Temperatures Done...");
+  }
+
+  /* Update the temperature array and calculate the average */
   avg_temperature = 0;
   for (int i = 0; i < numSensors; i++) {
     temperature[i] = temp_sensor[i].getTempCByIndex(0);
     avg_temperature += temperature[i];
   }
   avg_temperature /= numSensors;
+  /* At the moment I get an average temperature, and the current
+   * temperature is equal to the average. However, I still want
+   * to keep these two variable, because after the testing I am not
+   * sure if these two variables should be "one" */
+  current_temperature = avg_temperature;
+
+  /* Initiate a new temperature conversion */
+  _requestAllTemperatures();
 }
 
 void initTempSensors() {
 #if DEBUG
   Serial.begin(115200);
-  Serial.println("Dallas Temperature IC Control Library Demo");
+  Serial.println(F("Dallas Temperature IC Control Library Demo"));
 
-  Serial.print("============ Ready with ");
+  Serial.print(F("============ Ready with "));
   Serial.print(numSensors);
-  Serial.println(" Sensors ================");
+  Serial.println(F(" Sensors ================"));
 #endif
 
   //Start up the library on all defined pins
@@ -82,15 +100,15 @@ void initTempSensors() {
     temp_sensor[i].begin();
   #if DEBUG
     if (!temp_sensor[i].getAddress(deviceAddress, 0))
-      Serial.println("Unable to find address for Device 0");
+      Serial.println(F("Unable to find address for Device 0"));
   #endif
 
     temp_sensor[i].setResolution(deviceAddress, TEMP_RESOLUTION_BITS);
     temp_sensor[i].setWaitForConversion(false);
   #if DEBUG
-    Serial.print("Device Resolution on Pin ");
+    Serial.print(F("Device Resolution on Pin "));
     Serial.print(oneWirePins[i]);
-    Serial.print(": ");
+    Serial.print(F(": "));
     Serial.print(temp_sensor[i].getResolution(deviceAddress), DEC);
     Serial.println();
   #endif
