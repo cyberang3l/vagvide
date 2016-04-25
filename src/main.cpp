@@ -431,6 +431,18 @@ void display_temperature(uint8_t buttonsPressed) {
   }
 }
 
+/* Function that will be executed everytime Timer1 overflows */
+ISR(TIMER1_OVF_vect)
+{
+  /* TODO: Add the PID.compute and controlling of the immersion
+   *       heaters in this function.
+   */
+   
+  TCNT1 = 0xFD8F; // Since the timer just overflowed if we run in this function,
+                  // set the TCNT1 register to the appropriate value in order
+                  // to keep our 10ms timed interrupts.
+}
+
 /***f* setup
  *
  * Default Arduino setup function
@@ -469,6 +481,30 @@ void setup() {
   initDesiredTemperature();
   temporary_temperature = desired_temperature;
 
+  /* Set a timed interrupt every 10ms */
+  cli();  // Disable global interrupts
+  TCCR1A = 0;
+  TCCR1B = 0;
+
+  /* Set the prescaler to 256
+   * This will give us on Mega2560 the following
+   * 16*10^6 / 256 = 62500 Hz, meaning that the timer counter will be increased
+   * once every 1/62500s (0.000016s or 16us). In order to raise the timer overflow
+   * interrupt every 10ms, we need to count 625 times (625*16us = 10ms) until
+   * overflowing the counter. Since the counter for timer1 is 16bits (meaning
+   * that it will overflow at 65535+1=65536), we need to start the counter at
+   * 65536-625 = 64911 = 0xFD8F
+   *
+   * A nice read that explains how this works:
+   *   https://arduinodiy.wordpress.com/2012/02/28/timer-interrupts/
+   */
+  TCCR1B |= (1 << CS12);
+
+  // Enable Timer1 Overflow Interrupt
+  TIMSK1 |= 1<<TOIE1;
+
+  TCNT1 = 0xFD8F;
+  sei(); // Enable global interrupts
   //turn the PID on
   SousPID.SetMode(AUTOMATIC);
 }
