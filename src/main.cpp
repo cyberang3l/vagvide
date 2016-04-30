@@ -30,8 +30,12 @@
  * press anything for X seconds, the operation is aborted.
  *
  * The temperature can also be set by choosing a preset from the web interface
- * TODO: finish the description of the operation.
- *       Add a menu to show the IP address settings/link state
+ * TODO: Add another opState for configuring the timer.
+ *       Then in the OPSTATE_DISPLAY_TEMP we should recycle through the
+ *       current temp, target temp and remaining time (if the user has set
+ *       the timer). The Presets should have a preset target temperature as
+ *       well as an optional timer. If the timer is not given, indefinite
+ *       water warming should be assumed.
  */
 enum operatingState {
   OPSTATE_OFF_TURN_ON = 0,        // Displays a Press OK to turn ON. The Sous Vide if off
