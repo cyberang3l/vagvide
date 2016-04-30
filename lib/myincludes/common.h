@@ -116,12 +116,6 @@ void setRgbLed(IN const uint8_t* RGB);
 
 /***f*
  *
- * Reads a single input button.
- */
-uint8_t readButton(push_buttons button);
-
-/***f*
- *
  * Reads all the input buttons plus the floating switch
  * that essentially works as a button.
  */

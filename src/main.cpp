@@ -452,31 +452,31 @@ void display_temperature(uint8_t buttonsPressed) {
 ISR(TIMER1_OVF_vect)
 {
   /* If we are in the devMode, turn pump and SSR off and return */
-  if (devMode) {
-    pump_operate(false);
-    ssr_operate(0);
-  } else {
-    if (opState != OPSTATE_OFF_TURN_ON) {
-      if (deviceIsInWater(readButton(BTN_FLOAT_SW))) {
-        /* Make sure the pump circulates the water, and
-         * control the Sous Vide with the PID
-         * TODO: Although I have an SSR, the SSR cannot
-         *       operate in such high frequencies as the ones supported
-         *       by default from the Arduino.
-         */
+  if (opState != OPSTATE_OFF_TURN_ON) {
+    if (deviceIsInWater(readButtons())) {
+      /* Make sure the pump circulates the water, and
+       * control the Sous Vide with the PID
+       * TODO: Although I have an SSR, the SSR cannot
+       *       operate in such high frequencies as the ones supported
+       *       by default from the Arduino.
+       */
+      if (devMode) {
+        pump_operate(false);
+        ssr_operate(0);
+      } else {
         pump_operate(true);
         SousPID.Compute();
         Serial.print(F("PID Output: "));
         Serial.println(PID_Output);
         ssr_operate(PID_Output);
-      } else {
-        pump_operate(false);
-        ssr_operate(0);
       }
     } else {
-        pump_operate(false);
-        ssr_operate(0);
+      pump_operate(false);
+      ssr_operate(0);
     }
+  } else {
+      pump_operate(false);
+      ssr_operate(0);
   }
 
   TCNT1 = 0xFD8F; // Since the timer just overflowed if we run in this function,

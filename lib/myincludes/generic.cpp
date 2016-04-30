@@ -63,16 +63,6 @@ void setRgbLed(IN const uint8_t* RGB) {
                   255 - RGB[2]);
 }
 
-uint8_t readButton(push_buttons button) {
-  uint8_t reply = 0x1F;
-
-  reply &= ~((digitalRead(buttonPins[button])) << button);
-
-  reply ^= (BTN_FLOAT_SW);
-
-  return reply;
-}
-
 uint8_t readButtons() {
    uint8_t reply = 0x1F;
 
