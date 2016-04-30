@@ -138,15 +138,28 @@ uint8_t main_menus_count = sizeof(LCD_TOP_LEVEL_MENU_LABELS) / sizeof(char*) / L
  */
 float temporary_temperature;
 
-/* PID variables */
-/* TODO: Make the PID variables "variable" and read them from EEPROM */
-double PID_Output;
+/* Development mode flag
+ * By long-pressing the UP AND DOWN buttons together for 6 seconds,
+ * we put the device in DEVELOPMENT mode. When the device
+ * is in the DEVELOPMENT mode, the immersion heaters and
+ * water pump are disabled, but the rest of the menus are
+ * working in order to test different device functionality.
+ */
+bool devMode = false;
 
 /* Duration of up and down buttons being pressed *
  * (150 is the button read interval) */
-byte longKeyPressCountMin = 40;    // 40 * 150 = 6000 ms
-byte mediumKeyPressCountMin = 20;    // 20 * 150 = 3000 ms
-byte upOrDownPressCount = 0; // How many counts of up or down
+uint8_t longKeyPressCountMin = 60;    // 40 * 150 = 9000 ms
+uint8_t mediumKeyPressCountMin = 30;    // 20 * 150 = 4500 ms
+uint8_t upOrDownPressCount = 0; // How many counts of up or down
+uint8_t upAndDownPressCount = 0; // How many counts of up AND down. We use this to
+                                 // determine if we will set the device in development mode
+uint8_t devModePressCount = 30; // If both Up and Down buttons are pressed for 4500ms
+                                // the put the device in development mode.
+
+/* PID variables */
+/* TODO: Make the PID variables "variable" and read them from EEPROM */
+double PID_Output;
 
 /* Instantiate the PID */
 /* Specify the links and initial tuning parameters */
@@ -434,10 +447,34 @@ void display_temperature(uint8_t buttonsPressed) {
 /* Function that will be executed everytime Timer1 overflows */
 ISR(TIMER1_OVF_vect)
 {
-  /* TODO: Add the PID.compute and controlling of the immersion
-   *       heaters in this function.
-   */
-   
+  /* If we are in the devMode, turn pump and SSR off and return */
+  if (devMode) {
+    pump_operate(false);
+    ssr_operate(0);
+  } else {
+    if (opState != OPSTATE_OFF_TURN_ON) {
+      if (deviceIsInWater(readButton(BTN_FLOAT_SW))) {
+        /* Make sure the pump circulates the water, and
+         * control the Sous Vide with the PID
+         * TODO: Although I have an SSR, the SSR cannot
+         *       operate in such high frequencies as the ones supported
+         *       by default from the Arduino.
+         */
+        pump_operate(true);
+        SousPID.Compute();
+        Serial.print(F("PID Output: "));
+        Serial.println(PID_Output);
+        ssr_operate(PID_Output);
+      } else {
+        pump_operate(false);
+        ssr_operate(0);
+      }
+    } else {
+        pump_operate(false);
+        ssr_operate(0);
+    }
+  }
+
   TCNT1 = 0xFD8F; // Since the timer just overflowed if we run in this function,
                   // set the TCNT1 register to the appropriate value in order
                   // to keep our 10ms timed interrupts.
@@ -565,6 +602,27 @@ void loop() {
   if (millis() - lastTimeButtonWasPressed > 150) {
     buttonsPressed = readButtons();
 
+    /* If we are not in devMode, check if we need to get into devMode */
+    if (!devMode) {
+      /* Check if both UP and DOWN buttons are pressed for at least 6 seconds
+       * and set the device to the DEVELOPMENT mode. Once the device is in
+       * development  mode, it will stay in that mode until a power reset.
+       */
+      if ((buttonsPressed & BTN_DOWN) && (buttonsPressed & BTN_UP)) {
+        if (upAndDownPressCount >= devModePressCount) {
+          devMode = true;
+          printLcdLine(LCD_STR_DEVMODE_NOW_ON);
+          setRgbLed(RGB_LED_VIOLET);
+          delay(3000); // Show the LCD message for 3 seconds
+                       // This will happen only once when devMode is enabled,
+                       // and only during development or testing so we don't
+                       // care that we will block the program flow for 3 seconds.
+        }
+        upAndDownPressCount += 1;
+      } else
+        upAndDownPressCount = 0;
+    }
+
     /* Clear the upOrDownPressCount if neither up or down are pressed */
     if(!(buttonsPressed & BTN_DOWN) && !(buttonsPressed & BTN_UP))
       upOrDownPressCount = 0;
@@ -608,6 +666,10 @@ void loop() {
      */
     if (!deviceIsInWater(buttonsPressed))
     {
+      /* TODO: Now I have the timer that is checking every 10ms if the device
+       * is in water, and acts accordingly. So probably I don't need the
+       * complete functionality of this if statement here.
+       */
       /* If the current opState is OPSTATE_OFF_TURN_ON, then
        * we turn the RGB led off. Otherwise we turn it red.
        * A red RGB led indicates that the Sous Vide is ON, but
@@ -670,26 +732,10 @@ void loop() {
     if (opState != OPSTATE_OFF_TURN_ON) {
       if (abs(desired_temperature - current_temperature) > 2)
         setRgbLed(RGB_LED_ORANGE);
+      else if (abs(desired_temperature - current_temperature) > 0.1)
+        setRgbLed(RGB_LED_CYAN);
       else
         setRgbLed(RGB_LED_GREEN);
-
-      /* Make sure the pump circulates the water, and
-       * control the Sous Vide with the PID
-       * TODO: Although I have an SSR, the SSR cannot
-       *       operate in such high frequencies as the ones supported
-       *       by default from the Arduino.
-       *
-       *       NOW THIS IS RUNNING ONCE EVERY 150ms WHICH IS VERY SLOW.
-       *       READ AND UNDERSTAND THE TIMER INTERRUPTS, IN ORDER TO ADD
-       *       THE FOLLOWING CODE IN AN INTERRUPT SO THAT IT GETS EXECUTED
-       *       NO MATTER WHAT, e.g. EVERY 10ms.
-       *       http://sculland.com/ATmega168/Interrupts-And-Timers/8-Bit-Timer-Setup/
-       */
-      pump_operate(true);
-      SousPID.Compute();
-      Serial.print(F("PID Output: "));
-      Serial.println(PID_Output);
-      ssr_operate(PID_Output);
     }
 
     /* Execute the corresponding opState function based on the current state.

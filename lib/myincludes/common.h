@@ -64,9 +64,12 @@ typedef enum _push_buttons {
  */
 extern byte degree_symbol[8]; // Variable to store the degree symbol (the little superscripted "o")
 
-extern const uint8_t RGB_LED_GREEN[3];
 extern const uint8_t RGB_LED_RED[3];
+extern const uint8_t RGB_LED_GREEN[3];
+extern const uint8_t RGB_LED_BLUE[3];
 extern const uint8_t RGB_LED_ORANGE[3];
+extern const uint8_t RGB_LED_VIOLET[3];
+extern const uint8_t RGB_LED_CYAN[3];
 extern const uint8_t RGB_LED_OFF[3];
 
 extern LiquidCrystal_I2C lcd;
@@ -110,6 +113,12 @@ static void _setRgbLedColor(IN uint8_t R,
  * accordingly.
  */
 void setRgbLed(IN const uint8_t* RGB);
+
+/***f*
+ *
+ * Reads a single input button.
+ */
+uint8_t readButton(push_buttons button);
 
 /***f*
  *

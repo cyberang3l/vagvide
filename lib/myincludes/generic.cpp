@@ -2,7 +2,10 @@
 
 const uint8_t RGB_LED_RED[3] = {160, 0, 0};
 const uint8_t RGB_LED_GREEN[3] = {0, 160, 0};
+const uint8_t RGB_LED_BLUE[3] = {0, 0, 160};
 const uint8_t RGB_LED_ORANGE[3] = {200, 135, 0};
+const uint8_t RGB_LED_VIOLET[3] = {130, 0, 200};
+const uint8_t RGB_LED_CYAN[3] = {0, 130, 130};
 const uint8_t RGB_LED_OFF[3] = {0, 0, 0};
 
 /* lcdBacklightIsOn must be in sync with the current status of the backlight.
@@ -58,6 +61,16 @@ void setRgbLed(IN const uint8_t* RGB) {
   _setRgbLedColor(255 - RGB[0],
                   255 - RGB[1],
                   255 - RGB[2]);
+}
+
+uint8_t readButton(push_buttons button) {
+  uint8_t reply = 0x1F;
+
+  reply &= ~((digitalRead(buttonPins[button])) << button);
+
+  reply ^= (BTN_FLOAT_SW);
+
+  return reply;
 }
 
 uint8_t readButtons() {

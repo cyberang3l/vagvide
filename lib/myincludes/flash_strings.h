@@ -47,3 +47,9 @@ const char * const LCD_TOP_LEVEL_MENU_LABELS[4][LCD_ROWS] PROGMEM = {
   {str8_1, str8_2},
   {str9_1, str9_2}
 };
+
+
+const char str10_1[] PROGMEM = "Development";
+const char str10_2[] PROGMEM = "mode is now ON";
+
+const char * const LCD_STR_DEVMODE_NOW_ON[LCD_ROWS] PROGMEM = {str10_1, str10_2};
