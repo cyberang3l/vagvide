@@ -53,3 +53,11 @@ const char str10_1[] PROGMEM = "Development";
 const char str10_2[] PROGMEM = "mode is now ON";
 
 const char * const LCD_STR_DEVMODE_NOW_ON[LCD_ROWS] PROGMEM = {str10_1, str10_2};
+
+
+const char str11_1[] PROGMEM = "Initializing";
+const char str11_2[] PROGMEM = "network";
+const char str11_3[] PROGMEM = "temp sensors";
+
+const char * const LCD_STR_INIT_NETWORK[LCD_ROWS] PROGMEM = {str11_1, str11_2};
+const char * const LCD_STR_INIT_TEMP_SENSORS[LCD_ROWS] PROGMEM = {str11_1, str11_3};

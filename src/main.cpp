@@ -500,23 +500,29 @@ void setup() {
   pinMode(FLOAT_SWITCH_PIN, INPUT);
   ssr_operate(0);
 
-  /* Initialize the temperature sensors
-   * and initiate a first temperature reading. */
-  initTempSensors();
-  _requestAllTemperatures();
-
-  /* Initialize the network but do not configure IP addresses yet
-   * We do that in the main loop because we need to react to link
-   * state changes
-   */
-  initNetworkModule();
-
   /* Initialize the LCD */
   lcd.begin(LCD_COLS, LCD_ROWS); //  <<----- My LCD is 16x2, or 20x4
   lcd.createChar(0, degree_symbol); // Store in byte 0 in LCD the degree_symbol (available bytes are 0-7)
 
   /* Turn on the backlight during initialization */
   setLcdBacklight(LCD_ON);
+
+  /* Print an "Initializing temp sensors" message in the LCD */
+  printLcdLine(LCD_STR_INIT_TEMP_SENSORS);
+
+  /* Initialize the temperature sensors
+   * and initiate a first temperature reading. */
+  initTempSensors();
+  _requestAllTemperatures();
+
+  /* Print an "Initializing Network" message in the LCD */
+  printLcdLine(LCD_STR_INIT_NETWORK);
+
+  /* Initialize the network but do not configure IP addresses yet
+   * We do that in the main loop because we need to react to link
+   * state changes
+   */
+  initNetworkModule();
 
   /* Initialize the desired temperature */
   initDesiredTemperature();
@@ -546,6 +552,7 @@ void setup() {
 
   TCNT1 = 0xFD8F;
   sei(); // Enable global interrupts
+
   //turn the PID on
   SousPID.SetMode(AUTOMATIC);
 }
