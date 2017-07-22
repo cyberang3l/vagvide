@@ -11,3 +11,4 @@ git submodule update
 platformio run
 ```
 
+A list of photographs with the building progress can be found in the [wiki page of this project](https://github.com/cyberang3l/vagvide/wiki).
